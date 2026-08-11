@@ -6,7 +6,7 @@ import { useAuth } from "./auth/AuthProvider.jsx";
 
 const APORIAX_REPO = "https://github.com/CaptainLand/AporiaX";
 const DOWNLOAD_URL = "https://github.com/CaptainLand/AporiaX/releases/latest";
-const APP_ICON_URL = "/aporiax-icon.png";
+const APP_ICON_URL = "https://raw.githubusercontent.com/CaptainLand/AporiaX/main/public/aporiax-icon.png";
 
 const copy = {
   en: {
