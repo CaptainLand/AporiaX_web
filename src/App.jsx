@@ -3,20 +3,18 @@ import ParticleSea from "./ParticleSea.jsx";
 
 const APORIAX_REPO = "https://github.com/CaptainLand/AporiaX";
 const DOWNLOAD_URL = "https://github.com/CaptainLand/AporiaX/releases/latest";
+const APP_ICON_URL = "/aporiax-icon.png";
 
 const copy = {
   en: {
     nav: ["Product", "Principles", "Download"],
     signin: "Sign in",
     signup: "Create account",
-    badge: "AporiaX 0.6.0 · Preview",
-    eyebrow: "Every problem begins with an aporia.",
-    titleA: "A local-first agent",
-    titleB: "for real work.",
-    lead: "AporiaX turns an unclear request into an observable, reviewable path — then works inside your authorized workspace, verifies the result, and leaves the evidence with you.",
+    titleA: "Build. Verify. Ship.",
+    titleB: "AporiaX.",
+    heroShort: "Local-first · Multi-Agent · Verifiable",
     download: "Download for Windows",
     github: "View on GitHub",
-    trust: "Your workspace stays local. Docker is optional. You stay in control.",
     pillarsTitle: "Not just an answer. A visible path.",
     pillarsLead: "AporiaX is built around three ideas that keep autonomous work understandable and recoverable.",
     principles: [
@@ -60,14 +58,11 @@ const copy = {
     nav: ["产品", "理念", "下载"],
     signin: "登录",
     signup: "创建账号",
-    badge: "AporiaX 0.6.0 · Preview",
-    eyebrow: "Every problem begins with an aporia.",
-    titleA: "一个真正工作的",
-    titleB: "Local-first Agent.",
-    lead: "AporiaX 把模糊需求变成可观察、可复核的行动路径，在你授权的本地工作区中执行，并用真实证据验证结果，而不只是返回一段聊天回复。",
+    titleA: "Build. Verify. Ship.",
+    titleB: "AporiaX.",
+    heroShort: "本地执行 · 多 Agent · 可验证",
     download: "下载 Windows 版",
     github: "查看 GitHub",
-    trust: "代码留在本地。Docker 可选。控制权始终属于你。",
     pillarsTitle: "不只给答案，也留下路径。",
     pillarsLead: "AporiaX 围绕三个原则构建，让自主执行始终可理解、可验证、可恢复。",
     principles: [
@@ -112,9 +107,7 @@ const copy = {
 function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
-      <span className="brand-mark__ear brand-mark__ear--left" />
-      <span className="brand-mark__ear brand-mark__ear--right" />
-      <span className="brand-mark__core">A</span>
+      <img src={APP_ICON_URL} alt="" />
     </span>
   );
 }
@@ -178,17 +171,17 @@ export default function App() {
       <main>
         <section className="hero" id="top">
           <ParticleSea />
-          <div className="hero-glow hero-glow--left" aria-hidden="true" /><div className="hero-glow hero-glow--right" aria-hidden="true" />
-          <div className="hero-content page-width">
-            <a className="release-pill" href={DOWNLOAD_URL} target="_blank" rel="noreferrer"><span className="release-dot" />{text.badge}<ArrowIcon /></a>
-            <p className="hero-eyebrow">{text.eyebrow}</p>
-            <h1><span>{text.titleA}</span><span className="hero-title-gradient">{text.titleB}</span></h1>
-            <p className="hero-lead">{text.lead}</p>
-            <div className="hero-actions">
-              <a className="button button--primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">{text.download}<ArrowIcon /></a>
-              <a className="button button--quiet" href={APORIAX_REPO} target="_blank" rel="noreferrer">{text.github}<ArrowIcon /></a>
+          <div className="hero-content page-width hero-content--split">
+            <div className="hero-statement">
+              <h1><span>{text.titleA}</span><span className="hero-title-gradient">{text.titleB}</span></h1>
             </div>
-            <p className="hero-trust">{text.trust}</p>
+            <div className="hero-cta">
+              <p className="hero-short">{text.heroShort}</p>
+              <div className="hero-actions">
+                <a className="button button--primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">{text.download}<ArrowIcon /></a>
+                <a className="button button--quiet" href={APORIAX_REPO} target="_blank" rel="noreferrer">{text.github}<ArrowIcon /></a>
+              </div>
+            </div>
           </div>
           <div className="hero-fade" aria-hidden="true" />
         </section>
