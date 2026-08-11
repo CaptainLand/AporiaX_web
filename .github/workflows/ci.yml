@@ -19,10 +19,25 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-fund
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Build
         run: npm run build
+
+      - name: Preview smoke
+        run: |
+          npm run preview -- --port 4173 > /tmp/aporia-web.log 2>&1 &
+          curl --retry 20 --retry-delay 1 --retry-connrefused -fsS http://localhost:4173/ > /tmp/home.html
+          curl --retry 20 --retry-delay 1 --retry-connrefused -fsS http://localhost:4173/account > /tmp/account.html
+          grep -q '<div id="root"></div>' /tmp/home.html
+          grep -q '<div id="root"></div>' /tmp/account.html
+
+      - name: Print preview log on failure
+        if: failure()
+        run: cat /tmp/aporia-web.log 2>/dev/null || true
