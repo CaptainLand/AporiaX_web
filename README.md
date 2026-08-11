@@ -4,6 +4,19 @@ Product website and Aporia Account Center for [AporiaX](https://github.com/Capta
 
 ## Local development
 
+Start AporiaX Cloud first on its `agent/cloud-v0.1-foundation` branch:
+
+```bash
+cp .env.example .env
+docker compose up -d
+npm install
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+Then start this web branch:
+
 ```bash
 cp .env.example .env
 npm install
@@ -11,8 +24,6 @@ npm run dev
 ```
 
 Open `http://localhost:5173`.
-
-The Account experience expects AporiaX Cloud at `http://localhost:4100` by default. Start the `CaptainLand/AporiaX_Cloud` account-integration branch first with PostgreSQL and Redis.
 
 ## Account flow
 
@@ -33,7 +44,9 @@ Landing
 
 Browser refresh credentials are never stored in `localStorage`; the Cloud API writes the refresh token as an HttpOnly cookie, while the short-lived access token stays only in React memory.
 
-In local development, the OTP is printed in the AporiaX Cloud API terminal. The Credits page also exposes a development-only helper to grant 100 test Credits when the Cloud development endpoint is enabled.
+In local development, the OTP is printed in the AporiaX Cloud terminal. The Credits page also exposes a development-only helper to grant 100 test Credits when the Cloud development endpoint is enabled.
+
+Cloud CI additionally verifies that those Credits can be reserved and settled by an authenticated streaming request through `aporia-mock`, producing both a `model_usage` ledger entry and usage-summary data consumed by Account Center.
 
 ## Build
 
@@ -49,7 +62,7 @@ The landing site and Account Center follow the desktop AporiaX identity:
 - primary surfaces use blue-black rather than a uniform black-purple fill;
 - violet is used for depth/sidebar separation and ice blue for active/status emphasis;
 - account surfaces borrow the desktop dialogue UI's cool-gray typography and restrained blue glow;
-- the navbar uses the canonical desktop AporiaX icon directly rather than the previously downscaled/cropped web asset.
+- the navbar renders the local AporiaX PNG as a direct `<img>` rather than through the legacy `BrandMark` wrapper that previously caused clipping.
 
 ## Environment
 
