@@ -1,0 +1,83 @@
+/* Final navigation polish against the AporiaX desktop dialogue UI. */
+
+/* Eliminate the legacy BrandMark box entirely. The official PNG becomes the layout item itself. */
+.brand-mark {
+  display: contents !important;
+}
+
+.brand-mark img {
+  display: block !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  max-width: 34px !important;
+  max-height: 34px !important;
+  flex: 0 0 34px !important;
+  object-fit: contain !important;
+  object-position: 50% 50% !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  clip: auto !important;
+  clip-path: none !important;
+  transform: none !important;
+  filter: drop-shadow(0 0 8px rgba(80, 190, 255, 0.24));
+}
+
+.brand {
+  gap: 10px;
+  color: #a9ddff !important;
+  text-shadow: 0 0 12px rgba(74, 183, 255, 0.16);
+}
+
+/* Dialogue-tab inspired blue typography: visible at rest, brighter on interaction. */
+.nav-links a,
+.language-toggle,
+.nav-text-button {
+  color: #79c9f5 !important;
+  text-shadow: 0 0 10px rgba(77, 184, 246, 0.14);
+  transition:
+    color 160ms ease,
+    text-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.nav-links a:hover,
+.language-toggle:hover,
+.nav-text-button:hover {
+  color: #b5e6ff !important;
+  text-shadow:
+    0 0 8px rgba(95, 204, 255, 0.5),
+    0 0 18px rgba(95, 204, 255, 0.22);
+}
+
+.nav-account-button {
+  color: #9ddcff !important;
+  border-color: rgba(92, 190, 247, 0.25) !important;
+  background:
+    linear-gradient(135deg, rgba(91, 71, 127, 0.34), rgba(48, 85, 120, 0.25)),
+    rgba(24, 24, 35, 0.5) !important;
+  text-shadow: 0 0 10px rgba(74, 183, 255, 0.16);
+}
+
+.nav-account-button:hover {
+  color: #c4edff !important;
+  border-color: rgba(100, 205, 255, 0.42) !important;
+  box-shadow:
+    0 0 0 1px rgba(111, 84, 153, 0.08),
+    0 0 20px rgba(69, 170, 235, 0.08);
+  text-shadow: 0 0 12px rgba(97, 205, 255, 0.42);
+}
+
+@media (max-width: 560px) {
+  .brand-mark img {
+    width: 31px !important;
+    height: 31px !important;
+    min-width: 31px !important;
+    min-height: 31px !important;
+    max-width: 31px !important;
+    max-height: 31px !important;
+    flex-basis: 31px !important;
+  }
+}
