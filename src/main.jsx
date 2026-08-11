@@ -5,6 +5,7 @@ import "./styles.css";
 import "./aporiax-theme.css";
 import "./product-hero.css";
 import "./blue-accent.css";
+import "./nav-polish.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
