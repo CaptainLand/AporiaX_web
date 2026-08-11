@@ -1,32 +1,40 @@
-/* Final navigation polish against the AporiaX desktop dialogue UI. */
+/* Final navigation + hero polish against the AporiaX desktop dialogue UI. */
 
-/* Eliminate the legacy BrandMark box entirely. The official PNG becomes the layout item itself. */
+/*
+ * Render the official icon as the BrandMark background instead of relying on
+ * the nested <img>. Several legacy BrandMark rules exist in earlier layers;
+ * this isolates the final rendering from image sizing/clipping interactions.
+ */
 .brand-mark {
-  display: contents !important;
-}
-
-.brand-mark img {
-  display: block !important;
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
-  min-height: 34px !important;
-  max-width: 34px !important;
-  max-height: 34px !important;
-  flex: 0 0 34px !important;
-  object-fit: contain !important;
-  object-position: 50% 50% !important;
+  display: inline-block !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  flex: 0 0 36px !important;
   overflow: visible !important;
   border: 0 !important;
-  border-radius: 9px !important;
+  border-radius: 10px !important;
+  background-image: url("/aporiax-icon.png") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  box-shadow: none !important;
+  line-height: 0 !important;
   clip: auto !important;
   clip-path: none !important;
   transform: none !important;
-  filter: drop-shadow(0 0 8px rgba(80, 190, 255, 0.24));
+  filter: drop-shadow(0 0 9px rgba(80, 190, 255, 0.24));
+}
+
+.brand-mark img {
+  display: none !important;
 }
 
 .brand {
-  gap: 10px;
+  gap: 11px;
   color: #a9ddff !important;
   text-shadow: 0 0 12px rgba(74, 183, 255, 0.16);
 }
@@ -70,14 +78,49 @@
   text-shadow: 0 0 12px rgba(97, 205, 255, 0.42);
 }
 
+/*
+ * The first pass anchored both hero groups at the bottom of the viewport.
+ * Bring the visual center upward while keeping the particle field dominant.
+ */
+.hero-content--split {
+  align-items: center !important;
+  padding-top: 74px !important;
+  padding-bottom: 0 !important;
+  transform: translateY(72px);
+}
+
+.hero-statement,
+.hero-cta {
+  align-self: center !important;
+}
+
+.hero-cta {
+  padding-bottom: 0 !important;
+}
+
+@media (max-width: 820px) {
+  .hero-content--split {
+    align-content: center !important;
+    align-items: end !important;
+    padding-top: 92px !important;
+    padding-bottom: 46px !important;
+    transform: none;
+  }
+
+  .hero-statement,
+  .hero-cta {
+    align-self: end !important;
+  }
+}
+
 @media (max-width: 560px) {
-  .brand-mark img {
-    width: 31px !important;
-    height: 31px !important;
-    min-width: 31px !important;
-    min-height: 31px !important;
-    max-width: 31px !important;
-    max-height: 31px !important;
-    flex-basis: 31px !important;
+  .brand-mark {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    flex-basis: 32px !important;
   }
 }
