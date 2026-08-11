@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ParticleSea from "./ParticleSea.jsx";
+import AccountPage from "./account/AccountPage.jsx";
+import AuthModal from "./auth/AuthModal.jsx";
+import { useAuth } from "./auth/AuthProvider.jsx";
 
 const APORIAX_REPO = "https://github.com/CaptainLand/AporiaX";
 const DOWNLOAD_URL = "https://github.com/CaptainLand/AporiaX/releases/latest";
-const APP_ICON_URL = "/aporiax-icon.png";
+const APP_ICON_URL = "https://raw.githubusercontent.com/CaptainLand/AporiaX/main/public/aporiax-icon.png";
 
 const copy = {
   en: {
@@ -45,14 +48,6 @@ const copy = {
     ctaTitle: "Give your next problem somewhere to begin.",
     ctaLead: "AporiaX is currently a Windows x64 Preview. Bring your own compatible model provider and attach a local workspace.",
     footer: "Local-first agent runtime · MIT licensed",
-    modalSignIn: "Sign in to AporiaX",
-    modalSignUp: "Create your AporiaX account",
-    modalLead: "The account service is being prepared for device sync, credits, invitations and remote task notifications.",
-    email: "Email",
-    password: "Password",
-    phone: "Phone number",
-    continue: "Account system coming soon",
-    close: "Close",
   },
   zh: {
     nav: ["产品", "理念", "下载"],
@@ -93,78 +88,74 @@ const copy = {
     ctaTitle: "给你的下一个问题，一个开始的地方。",
     ctaLead: "AporiaX 当前提供 Windows x64 Preview。添加兼容的模型 Provider，绑定本地工作区，然后开始第一个任务。",
     footer: "Local-first Agent Runtime · MIT License",
-    modalSignIn: "登录 AporiaX",
-    modalSignUp: "创建 AporiaX 账号",
-    modalLead: "账号服务正在为设备同步、Credits、邀请体系与远程任务通知做准备。",
-    email: "邮箱",
-    password: "密码",
-    phone: "手机号",
-    continue: "账号系统即将上线",
-    close: "关闭",
   },
 };
-
-function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <img src={APP_ICON_URL} alt="" />
-    </span>
-  );
-}
 
 function ArrowIcon() {
   return <span aria-hidden="true">↗</span>;
 }
 
-function AccountModal({ mode, onClose, text }) {
-  const isSignup = mode === "signup";
-
-  useEffect(() => {
-    if (!mode) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mode, onClose]);
-
-  if (!mode) return null;
-
-  return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="modal-close" type="button" onClick={onClose} aria-label={text.close}>×</button>
-        <div className="modal-orbit" aria-hidden="true" />
-        <p className="section-kicker">Aporia Account</p>
-        <h2 id="account-title">{isSignup ? text.modalSignUp : text.modalSignIn}</h2>
-        <p>{text.modalLead}</p>
-        <form onSubmit={(event) => event.preventDefault()}>
-          <label><span>{text.email}</span><input type="email" autoComplete="email" placeholder="you@example.com" /></label>
-          {isSignup ? <label><span>{text.phone}</span><input type="tel" autoComplete="tel" placeholder="+86" /></label> : null}
-          <label><span>{text.password}</span><input type="password" autoComplete={isSignup ? "new-password" : "current-password"} placeholder="••••••••" /></label>
-          <button className="button button--primary button--wide" type="submit" disabled>{text.continue}</button>
-        </form>
-      </section>
-    </div>
-  );
+function BrandLogo() {
+  return <img className="brand-logo" src={APP_ICON_URL} alt="" aria-hidden="true" />;
 }
 
 export default function App() {
-  const [language, setLanguage] = useState("en");
+  const { status, account } = useAuth();
+  const [language, setLanguage] = useState(() => window.localStorage.getItem("aporia-language") || "en");
   const [modal, setModal] = useState(null);
-  const text = copy[language];
+  const [route, setRoute] = useState(() => window.location.pathname.startsWith("/account") ? "account" : "home");
+  const text = copy[language] || copy.en;
+
+  useEffect(() => {
+    window.localStorage.setItem("aporia-language", language);
+  }, [language]);
+
+  useEffect(() => {
+    const onPopState = () => setRoute(window.location.pathname.startsWith("/account") ? "account" : "home");
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const identity = account?.identities?.find((item) => item.type === "email")?.identifier || "";
+  const accountName = account?.user?.displayName || identity.split("@")[0] || "Account";
+  const accountInitials = useMemo(() => accountName.slice(0, 2).toUpperCase(), [accountName]);
+
+  function navigate(path) {
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setRoute(path.startsWith("/account") ? "account" : "home");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  function openAccount() {
+    navigate("/account");
+  }
+
+  if (route === "account") {
+    return (
+      <>
+        <AccountPage language={language} setLanguage={setLanguage} onBack={() => navigate("/")} onSignIn={() => setModal("signin")} />
+        <AuthModal mode={modal} onClose={() => setModal(null)} language={language} onAuthenticated={openAccount} />
+      </>
+    );
+  }
 
   return (
     <div className="site-shell">
       <header className="nav-shell">
-        <a className="brand" href="#top" aria-label="AporiaX home"><BrandMark /><span>AporiaX</span></a>
+        <a className="brand" href="#top" aria-label="AporiaX home"><BrandLogo /><span>AporiaX</span></a>
         <nav className="nav-links" aria-label="Primary navigation">
           <a href="#product">{text.nav[0]}</a><a href="#principles">{text.nav[1]}</a><a href="#download">{text.nav[2]}</a>
         </nav>
         <div className="nav-actions">
           <button className="language-toggle" type="button" onClick={() => setLanguage((current) => (current === "en" ? "zh" : "en"))}>{language === "en" ? "中文" : "EN"}</button>
-          <button className="nav-text-button" type="button" onClick={() => setModal("signin")}>{text.signin}</button>
-          <button className="nav-account-button" type="button" onClick={() => setModal("signup")}>{text.signup}</button>
+          {status === "authenticated" ? (
+            <button className="nav-user-button" type="button" onClick={openAccount}><span>{accountInitials}</span><span>{accountName}</span></button>
+          ) : (
+            <>
+              <button className="nav-text-button" type="button" onClick={() => setModal("signin")}>{text.signin}</button>
+              <button className="nav-account-button" type="button" onClick={() => setModal("signup")}>{text.signup}</button>
+            </>
+          )}
         </div>
       </header>
 
@@ -226,12 +217,12 @@ export default function App() {
       </main>
 
       <footer className="footer page-width">
-        <a className="brand brand--footer" href="#top"><BrandMark /><span>AporiaX</span></a>
+        <a className="brand brand--footer" href="#top"><BrandLogo /><span>AporiaX</span></a>
         <p>{text.footer}</p>
         <div><a href={APORIAX_REPO} target="_blank" rel="noreferrer">GitHub</a><a href={`${APORIAX_REPO}#readme`} target="_blank" rel="noreferrer">Docs</a><a href={DOWNLOAD_URL} target="_blank" rel="noreferrer">Download</a></div>
       </footer>
 
-      <AccountModal mode={modal} onClose={() => setModal(null)} text={text} />
+      <AuthModal mode={modal} onClose={() => setModal(null)} language={language} onAuthenticated={openAccount} />
     </div>
   );
 }
