@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import "./styles.css";
 import "./aporiax-theme.css";
 import "./product-hero.css";
+import "./blue-accent.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
