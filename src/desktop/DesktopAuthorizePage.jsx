@@ -99,7 +99,7 @@ function readDesktopRequest() {
 
   const valid = clientId === APORIAX_DESKTOP_CLIENT_ID
     && Boolean(redirectUri)
-    && /^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)
+    && /^[A-Za-z0-9_-]{43}$/.test(codeChallenge)
     && codeChallengeMethod === "S256"
     && /^[A-Za-z0-9._~-]{16,256}$/.test(state)
     && deviceName.length >= 1 && deviceName.length <= 120
