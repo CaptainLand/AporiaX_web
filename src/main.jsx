@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
+import RootApp from "./RootApp.jsx";
 import { AuthProvider } from "./auth/AuthProvider.jsx";
 import "./styles.css";
 import "./aporiax-theme.css";
@@ -13,7 +13,7 @@ import "./account/account.css";
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <RootApp />
     </AuthProvider>
   </React.StrictMode>,
 );
