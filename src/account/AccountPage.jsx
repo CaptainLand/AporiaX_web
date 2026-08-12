@@ -16,6 +16,9 @@ const copy = {
     quotaLead: "Your free Aporia Cloud allowance refreshes every week.",
     remaining: "remaining",
     reset: "Resets",
+    weekly: "Weekly",
+    refilled: "Refilled",
+    complete: "Complete",
     plan: "Plan",
     free: "Free Preview",
     account: "Account",
@@ -48,7 +51,6 @@ const copy = {
     api: "Cloud API",
     models: "Available models",
     invites: "Invites",
-    inviteCode: "Your invite code",
     successfulInvites: "Successful invites",
     nextReward: "Next refill",
     rewardsComplete: "All three refill rewards have been used",
@@ -70,6 +72,9 @@ const copy = {
     quotaLead: "免费的 Aporia Cloud 使用额度每周自动刷新。",
     remaining: "剩余",
     reset: "下次刷新",
+    weekly: "每周",
+    refilled: "已补充",
+    complete: "已完成",
     plan: "方案",
     free: "Free Preview",
     account: "账号",
@@ -102,7 +107,6 @@ const copy = {
     api: "Cloud API",
     models: "可用模型",
     invites: "邀请",
-    inviteCode: "你的邀请码",
     successfulInvites: "有效邀请",
     nextReward: "下一档补充",
     rewardsComplete: "三次额度补充机会均已使用",
@@ -254,9 +258,13 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
 
   async function copyInviteLink() {
     if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError("CLIPBOARD_UNAVAILABLE");
+    }
   }
 
   async function signOut() {
@@ -270,7 +278,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
     <article className="account-panel quota-card">
       <div className="quota-card-head">
         <div><span>{text.weeklyQuota}</span><strong>{quotaRemaining}% {text.remaining}</strong></div>
-        <span className="quota-state">{data.quota?.refilled ? "refilled" : "weekly"}</span>
+        <span className="quota-state">{data.quota?.refilled ? text.refilled : text.weekly}</span>
       </div>
       <div className="quota-bar-shell"><div className="quota-bar-fill" style={{ width: `${quotaRemaining}%` }} /></div>
       <div className="quota-meta-row"><span>{text.quotaLead}</span><strong>{text.reset}: {formatReset(data.quota?.cycleEnd)}</strong></div>
@@ -282,7 +290,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
     <article className="account-panel">
       <div className="invite-card-head">
         <div><span>{text.invites}</span><strong>{data.invites?.successfulInvites || 0} {text.successfulInvites}</strong></div>
-        <span className="quota-state">{data.invites?.rewardsExhausted ? "complete" : data.invites?.nextRewardPercent ? `+${data.invites.nextRewardPercent}%` : "—"}</span>
+        <span className="quota-state">{data.invites?.rewardsExhausted ? text.complete : data.invites?.nextRewardPercent ? `+${data.invites.nextRewardPercent}%` : "—"}</span>
       </div>
       <div className="invite-code-box">
         <div className="invite-code-row">
