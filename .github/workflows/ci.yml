@@ -35,8 +35,10 @@ jobs:
           npm run preview -- --port 4173 > /tmp/aporia-web.log 2>&1 &
           curl --retry 20 --retry-delay 1 --retry-connrefused -fsS http://localhost:4173/ > /tmp/home.html
           curl --retry 20 --retry-delay 1 --retry-connrefused -fsS http://localhost:4173/account > /tmp/account.html
+          curl --retry 20 --retry-delay 1 --retry-connrefused -fsS 'http://localhost:4173/authorize/desktop?client_id=aporiax-desktop&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fcallback&code_challenge=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&code_challenge_method=S256&state=desktop-auth-smoke-state&device_name=CI%20Desktop&platform=win32' > /tmp/desktop-auth.html
           grep -q '<div id="root"></div>' /tmp/home.html
           grep -q '<div id="root"></div>' /tmp/account.html
+          grep -q '<div id="root"></div>' /tmp/desktop-auth.html
 
       - name: Print preview log on failure
         if: failure()
