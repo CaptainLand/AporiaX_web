@@ -80,17 +80,47 @@
 .auth-dev-note { padding: 9px 10px; border-radius: 8px; border: 1px dashed rgba(104, 209, 255, 0.14); background: rgba(49, 106, 139, 0.06); color: #68889b !important; }
 .auth-error { padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(214, 111, 151, 0.14); background: rgba(99, 43, 65, 0.1); color: #c98ea6 !important; }
 
+.auth-code-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: -4px;
+  color: #657b89;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.auth-resend,
 .auth-back {
-  justify-self: center;
   border: 0;
   background: transparent;
   color: #718795;
   font: inherit;
   font-size: 10px;
   cursor: pointer;
+  transition: color 150ms ease, opacity 150ms ease;
 }
 
-.auth-back:hover { color: #8ed9ff; }
+.auth-resend {
+  flex: 0 0 auto;
+  padding: 0;
+  color: #789bb0;
+}
+
+.auth-resend:hover:not(:disabled),
+.auth-back:hover {
+  color: #8ed9ff;
+}
+
+.auth-resend:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.auth-back {
+  justify-self: center;
+}
 
 .nav-user-button {
   display: flex;
