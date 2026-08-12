@@ -7,6 +7,20 @@ import { useAuth } from "./auth/AuthProvider.jsx";
 const APORIAX_REPO = "https://github.com/CaptainLand/AporiaX";
 const DOWNLOAD_URL = "https://github.com/CaptainLand/AporiaX/releases/latest";
 const APP_ICON_URL = "https://raw.githubusercontent.com/CaptainLand/AporiaX/main/public/aporiax-icon.png";
+const BASE_URL = import.meta.env.BASE_URL || "/";
+const BASE_PATH = BASE_URL === "/" ? "" : BASE_URL.replace(/\/$/, "");
+
+function routeFromPathname(pathname) {
+  const relativePath = BASE_PATH && pathname.startsWith(BASE_PATH)
+    ? pathname.slice(BASE_PATH.length) || "/"
+    : pathname;
+  return relativePath.startsWith("/account") ? "account" : "home";
+}
+
+function withBase(path) {
+  if (path === "/") return BASE_URL;
+  return `${BASE_PATH}${path}`;
+}
 
 const copy = {
   en: {
@@ -103,7 +117,7 @@ export default function App() {
   const { status, account } = useAuth();
   const [language, setLanguage] = useState(() => window.localStorage.getItem("aporia-language") || "en");
   const [modal, setModal] = useState(null);
-  const [route, setRoute] = useState(() => window.location.pathname.startsWith("/account") ? "account" : "home");
+  const [route, setRoute] = useState(() => routeFromPathname(window.location.pathname));
   const text = copy[language] || copy.en;
 
   useEffect(() => {
@@ -111,7 +125,7 @@ export default function App() {
   }, [language]);
 
   useEffect(() => {
-    const onPopState = () => setRoute(window.location.pathname.startsWith("/account") ? "account" : "home");
+    const onPopState = () => setRoute(routeFromPathname(window.location.pathname));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -121,7 +135,8 @@ export default function App() {
   const accountInitials = useMemo(() => accountName.slice(0, 2).toUpperCase(), [accountName]);
 
   function navigate(path) {
-    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    const target = withBase(path);
+    if (window.location.pathname !== target) window.history.pushState({}, "", target);
     setRoute(path.startsWith("/account") ? "account" : "home");
     window.scrollTo({ top: 0, behavior: "instant" });
   }
