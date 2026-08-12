@@ -88,14 +88,17 @@ export async function api(path, options = {}, retry = true) {
   return payload;
 }
 
-export async function requestEmailCode(email) {
-  return api("/auth/email/request-code", { method: "POST", body: { email } }, false);
+export async function requestEmailCode(email, inviteCode = "") {
+  return api("/auth/email/request-code", {
+    method: "POST",
+    body: { email, ...(inviteCode ? { inviteCode } : {}) },
+  }, false);
 }
 
-export async function verifyEmailCode(email, code) {
+export async function verifyEmailCode(email, code, inviteCode = "") {
   const result = await api("/auth/email/verify", {
     method: "POST",
-    body: { email, code, clientType: "web" },
+    body: { email, code, clientType: "web", ...(inviteCode ? { inviteCode } : {}) },
   }, false);
   setAccessToken(result.accessToken);
   return result;
