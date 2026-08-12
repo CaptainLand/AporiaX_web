@@ -104,6 +104,17 @@ export async function verifyEmailCode(email, code, inviteCode = "") {
   return result;
 }
 
+export async function authorizeDesktopLogin(request) {
+  const options = { method: "POST", body: request };
+  try {
+    return await api("/auth/desktop/authorize", options, false);
+  } catch (error) {
+    if (error?.status !== 401) throw error;
+    await refreshWebSession();
+    return api("/auth/desktop/authorize", options, false);
+  }
+}
+
 export async function logoutWebSession() {
   try {
     await api("/auth/logout", { method: "POST" }, false);
