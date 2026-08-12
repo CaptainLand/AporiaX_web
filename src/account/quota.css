@@ -226,33 +226,6 @@
   background: linear-gradient(90deg, rgba(104, 209, 255, 0.78) var(--quota-remaining, 100%), rgba(93, 114, 128, 0.18) var(--quota-remaining, 100%));
 }
 
-.auth-optional {
-  margin-left: 5px;
-  color: #5d7380;
-  font-size: 9px;
-  font-weight: 400;
-}
-
-.auth-field-hint {
-  color: #5f7380;
-  font-size: 9px;
-  line-height: 1.5;
-}
-
-.auth-invite-applied {
-  margin: 0 !important;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(100, 77, 133, 0.08);
-  color: #758794 !important;
-  font-size: 9px !important;
-}
-
-.auth-invite-applied strong {
-  color: #b2a0dc;
-  letter-spacing: 0.08em;
-}
-
 @media (max-width: 720px) {
   .quota-meta-row,
   .invite-code-row {
