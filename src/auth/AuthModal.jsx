@@ -9,8 +9,11 @@ const copy = {
   en: {
     signin: "Sign in to AporiaX",
     signup: "Create your AporiaX account",
-    lead: "One email. No password. Your account connects Credits, devices and future remote sessions.",
+    lead: "One email. No password. Your account connects weekly quota, devices and future remote sessions.",
     email: "Email",
+    invite: "Invite code",
+    inviteOptional: "Optional",
+    inviteHint: "Have an invite? Enter it before requesting your code.",
     code: "Verification code",
     send: "Continue",
     verify: "Sign in",
@@ -22,6 +25,7 @@ const copy = {
     resendIn: "Resend code in",
     expiresIn: "Code expires in",
     rateLimited: "Please wait a minute before requesting another code.",
+    invalidInvite: "That invite code is not valid.",
     sendError: "Unable to send code.",
     invalidCode: "The code is invalid or expired.",
     verifyError: "Unable to sign in.",
@@ -31,8 +35,11 @@ const copy = {
   zh: {
     signin: "登录 AporiaX",
     signup: "创建 AporiaX 账号",
-    lead: "只需要邮箱，不需要密码。账号用于连接 Credits、设备与未来的远程会话。",
+    lead: "只需要邮箱，不需要密码。账号用于连接周额度、设备与未来的远程会话。",
     email: "邮箱",
+    invite: "邀请码",
+    inviteOptional: "选填",
+    inviteHint: "如果有邀请码，请在获取验证码前填写。",
     code: "验证码",
     send: "继续",
     verify: "登录",
@@ -44,6 +51,7 @@ const copy = {
     resendIn: "可重新发送倒计时",
     expiresIn: "验证码剩余有效时间",
     rateLimited: "请等待一分钟后再重新请求验证码。",
+    invalidInvite: "这个邀请码无效。",
     sendError: "无法发送验证码。",
     invalidCode: "验证码无效或已过期。",
     verifyError: "无法登录。",
@@ -65,19 +73,19 @@ function readPendingVerification() {
       window.sessionStorage.removeItem(PENDING_VERIFICATION_KEY);
       return null;
     }
-    return value;
+    return { ...value, inviteCode: String(value.inviteCode || "") };
   } catch {
     window.sessionStorage.removeItem(PENDING_VERIFICATION_KEY);
     return null;
   }
 }
 
-function savePendingVerification(email, expiresInSeconds) {
+function savePendingVerification(email, inviteCode, expiresInSeconds) {
   const requestedAt = Date.now();
   const ttlMs = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
     ? expiresInSeconds * 1000
     : DEFAULT_OTP_TTL_MS;
-  const pending = { email, requestedAt, expiresAt: requestedAt + ttlMs };
+  const pending = { email, inviteCode, requestedAt, expiresAt: requestedAt + ttlMs };
   window.sessionStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pending));
   return pending;
 }
@@ -93,10 +101,19 @@ function formatCountdown(seconds) {
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
+function inviteFromLocation() {
+  try {
+    return new URLSearchParams(window.location.search).get("invite")?.trim().toUpperCase() || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function AuthModal({ mode, onClose, language = "en", onAuthenticated }) {
   const { requestCode, verifyCode } = useAuth();
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(null);
   const [now, setNow] = useState(() => Date.now());
@@ -113,10 +130,12 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
     if (restored) {
       setPending(restored);
       setEmail(restored.email);
+      setInviteCode(restored.inviteCode || "");
       setStep("code");
     } else {
       setPending(null);
       setEmail("");
+      setInviteCode(mode === "signup" ? inviteFromLocation() : "");
       setStep("email");
     }
   }, [mode]);
@@ -155,21 +174,29 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
     ? Math.max(0, Math.ceil((pending.expiresAt - now) / 1000))
     : 0;
 
+  function authError(err, fallback) {
+    if (err?.message === "OTP_RATE_LIMITED") return text.rateLimited;
+    if (err?.message === "INVITE_CODE_INVALID") return text.invalidInvite;
+    return err?.message || fallback;
+  }
+
   async function submitEmail(event) {
     event.preventDefault();
     const normalizedEmail = email.trim();
+    const normalizedInvite = mode === "signup" ? inviteCode.trim().toUpperCase() : "";
     if (!normalizedEmail) return;
     setBusy(true);
     setError("");
     try {
-      const result = await requestCode(normalizedEmail);
-      const nextPending = savePendingVerification(normalizedEmail, result?.expiresInSeconds);
+      const result = await requestCode(normalizedEmail, normalizedInvite);
+      const nextPending = savePendingVerification(normalizedEmail, normalizedInvite, result?.expiresInSeconds);
       setEmail(normalizedEmail);
+      setInviteCode(normalizedInvite);
       setPending(nextPending);
       setNow(Date.now());
       setStep("code");
     } catch (err) {
-      setError(err?.message === "OTP_RATE_LIMITED" ? text.rateLimited : err?.message || text.sendError);
+      setError(authError(err, text.sendError));
     } finally {
       setBusy(false);
     }
@@ -181,13 +208,13 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
     setBusy(true);
     setError("");
     try {
-      await verifyCode(email.trim(), code);
+      await verifyCode(email.trim(), code, inviteCode.trim().toUpperCase());
       clearPendingVerification();
       setPending(null);
       onClose();
       onAuthenticated?.();
     } catch (err) {
-      setError(err?.message === "OTP_INVALID" ? text.invalidCode : err?.message || text.verifyError);
+      setError(err?.message === "OTP_INVALID" ? text.invalidCode : authError(err, text.verifyError));
     } finally {
       setBusy(false);
     }
@@ -198,13 +225,13 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
     setBusy(true);
     setError("");
     try {
-      const result = await requestCode(email.trim());
-      const nextPending = savePendingVerification(email.trim(), result?.expiresInSeconds);
+      const result = await requestCode(email.trim(), inviteCode.trim().toUpperCase());
+      const nextPending = savePendingVerification(email.trim(), inviteCode.trim().toUpperCase(), result?.expiresInSeconds);
       setPending(nextPending);
       setCode("");
       setNow(Date.now());
     } catch (err) {
-      setError(err?.message === "OTP_RATE_LIMITED" ? text.rateLimited : err?.message || text.sendError);
+      setError(authError(err, text.sendError));
     } finally {
       setBusy(false);
     }
@@ -234,6 +261,13 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
               <span>{text.email}</span>
               <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="you@example.com" autoFocus />
             </label>
+            {mode === "signup" ? (
+              <label>
+                <span>{text.invite} <small className="auth-optional">{text.inviteOptional}</small></span>
+                <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 32))} type="text" autoComplete="off" placeholder="A1B2C3D4" />
+                <small className="auth-field-hint">{text.inviteHint}</small>
+              </label>
+            ) : null}
             {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button className="button button--primary button--wide" type="submit" disabled={busy || !email.trim()}>{busy ? "…" : text.send}</button>
           </form>
@@ -250,6 +284,7 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
                 {resendSeconds > 0 ? `${text.resendIn} ${resendSeconds}s` : text.resend}
               </button>
             </div>
+            {inviteCode ? <p className="auth-invite-applied">{text.invite}: <strong>{inviteCode}</strong></p> : null}
             {import.meta.env.DEV ? <p className="auth-dev-note">{text.dev}</p> : null}
             {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button className="button button--primary button--wide" type="submit" disabled={busy || code.length !== 6}>{busy ? "…" : text.verify}</button>
