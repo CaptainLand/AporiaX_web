@@ -1,22 +1,140 @@
 import { useEffect, useRef } from "react";
 
-const TAU = Math.PI * 2;
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
 
-function createPoints() {
-  const points = [];
-  const columns = 56;
-  const rows = 27;
+function hash(x, y, seed = 0) {
+  const value = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453123;
+  return value - Math.floor(value);
+}
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const x = (column / (columns - 1) - 0.5) * 2;
-      const z = row / (rows - 1);
-      const jitter = ((column * 19 + row * 31) % 17) / 17 - 0.5;
-      points.push({ x, z, jitter });
-    }
+function smoothNoise(x, y, seed = 0) {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const tx = x - x0;
+  const ty = y - y0;
+  const sx = tx * tx * (3 - 2 * tx);
+  const sy = ty * ty * (3 - 2 * ty);
+  const n00 = hash(x0, y0, seed);
+  const n10 = hash(x0 + 1, y0, seed);
+  const n01 = hash(x0, y0 + 1, seed);
+  const n11 = hash(x0 + 1, y0 + 1, seed);
+  const nx0 = n00 + (n10 - n00) * sx;
+  const nx1 = n01 + (n11 - n01) * sx;
+  return nx0 + (nx1 - nx0) * sy;
+}
+
+function fbm(x, y, seed = 0) {
+  let value = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+
+  for (let octave = 0; octave < 4; octave += 1) {
+    value += smoothNoise(x * frequency, y * frequency, seed + octave * 7) * amplitude;
+    frequency *= 2;
+    amplitude *= 0.5;
   }
 
-  return points;
+  return value / 0.9375;
+}
+
+function distanceToSegment(px, py, ax, ay, bx, by) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const apx = px - ax;
+  const apy = py - ay;
+  const lengthSquared = abx * abx + aby * aby || 1;
+  const t = clamp((apx * abx + apy * aby) / lengthSquared, 0, 1);
+  const dx = px - (ax + abx * t);
+  const dy = py - (ay + aby * t);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function ellipseField(nx, ny, cx, cy, rx, ry, softness = 0.22) {
+  const distance = Math.sqrt(((nx - cx) / rx) ** 2 + ((ny - cy) / ry) ** 2);
+  return clamp((1 + softness - distance) / softness, 0, 1);
+}
+
+function bandField(nx, ny, ax, ay, bx, by, thickness, softness = 0.04) {
+  const distance = distanceToSegment(nx, ny, ax, ay, bx, by);
+  return clamp((thickness + softness - distance) / softness, 0, 1);
+}
+
+function densityAt(nx, ny) {
+  const terrain =
+    fbm(nx * 3.1 + 0.3, ny * 3.1 - 0.4, 4) * 0.72 +
+    fbm(nx * 8, ny * 8, 11) * 0.28;
+  const topShelf =
+    ellipseField(nx, ny, 0.68, 0.13, 0.39, 0.14, 0.28) *
+    (0.45 + terrain * 0.75);
+  const leftShelf =
+    ellipseField(nx, ny, 0.15, 0.28, 0.24, 0.18, 0.3) *
+    (0.3 + terrain * 0.78);
+  const lowerShelf =
+    ellipseField(nx, ny, 0.48, 0.88, 0.44, 0.16, 0.3) *
+    (0.38 + terrain * 0.7);
+  const rightIsland =
+    ellipseField(nx, ny, 0.96, 0.62, 0.11, 0.22, 0.35) *
+    (0.3 + terrain * 0.78);
+  const xBandA = bandField(nx, ny, 0.26, 0.1, 0.73, 0.72, 0.078, 0.045);
+  const xBandB = bandField(nx, ny, 0.73, 0.09, 0.29, 0.73, 0.072, 0.045);
+  const erosion = 0.3 + terrain * 0.95;
+  const xField = Math.max(xBandA, xBandB) * erosion;
+  const centerHalo =
+    ellipseField(nx, ny, 0.5, 0.46, 0.24, 0.19, 0.35) *
+    (0.25 + terrain * 0.68);
+  const bottomRibbonY = 0.79 + Math.sin(nx * 7.4) * 0.035;
+  const bottomRibbon =
+    clamp((0.1 - Math.abs(ny - bottomRibbonY)) / 0.07, 0, 1) *
+    clamp((nx - 0.03) / 0.16, 0, 1) *
+    clamp((0.94 - nx) / 0.18, 0, 1) *
+    (0.34 + terrain * 0.66);
+
+  let density = Math.max(
+    topShelf,
+    leftShelf * 0.78,
+    lowerShelf,
+    rightIsland,
+    xField * 0.92,
+    centerHalo * 0.54,
+    bottomRibbon,
+  );
+
+  const cutA = ellipseField(nx, ny, 0.5, 0.34, 0.09, 0.055, 0.35);
+  const cutB = ellipseField(nx, ny, 0.39, 0.57, 0.08, 0.045, 0.35);
+  const cutC = ellipseField(nx, ny, 0.64, 0.55, 0.07, 0.04, 0.35);
+  density *= 1 - Math.max(cutA * 0.48, cutB * 0.6, cutC * 0.55);
+
+  const edgeFade =
+    clamp(nx / 0.035, 0, 1) *
+    clamp((1 - nx) / 0.035, 0, 1) *
+    clamp(ny / 0.035, 0, 1) *
+    clamp((1 - ny) / 0.035, 0, 1);
+
+  return clamp(density * edgeFade, 0, 1);
+}
+
+function accentAt(nx, ny, seed) {
+  const diagonalWave = 0.5 + 0.5 * Math.sin(nx * 17 - ny * 11 + seed * 0.7);
+  const veinA = bandField(nx, ny, 0.3, 0.1, 0.7, 0.7, 0.022, 0.035);
+  const veinB = bandField(nx, ny, 0.71, 0.1, 0.31, 0.7, 0.018, 0.03);
+  const lowerVein = clamp(
+    (0.045 - Math.abs(ny - (0.79 + Math.sin(nx * 7.4) * 0.035))) / 0.045,
+    0,
+    1,
+  );
+  const regional =
+    ellipseField(nx, ny, 0.7, 0.17, 0.28, 0.1, 0.36) * 0.6 +
+    ellipseField(nx, ny, 0.46, 0.86, 0.34, 0.085, 0.38) * 0.58;
+  const noisy = fbm(nx * 7.5, ny * 7.5, 29);
+
+  return clamp(
+    Math.max(veinA, veinB * 0.85, lowerVein * 0.72, regional * noisy) *
+      (0.28 + diagonalWave * 0.72),
+    0,
+    1,
+  );
 }
 
 export default function ParticleSea() {
@@ -24,123 +142,295 @@ export default function ParticleSea() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return undefined;
+    const context = canvas?.getContext("2d", { alpha: false });
+    if (!canvas || !context) return undefined;
 
-    const context = canvas.getContext("2d", { alpha: true });
-    const points = createPoints();
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
-    let width = 1;
-    let height = 1;
-    let dpr = 1;
-    let animationFrame = 0;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      width = Math.max(1, rect.width);
-      height = Math.max(1, rect.height);
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const state = {
+      width: 0,
+      height: 0,
+      dpr: 1,
+      particles: [],
+      pointer: {
+        x: -9999,
+        y: -9999,
+        targetX: -9999,
+        targetY: -9999,
+        active: false,
+      },
+      pulse: { x: 0, y: 0, startedAt: -9999 },
+      lastFrame: performance.now(),
+      animationFrame: 0,
+      disposed: false,
     };
 
-    const onPointerMove = (event) => {
-      const rect = canvas.getBoundingClientRect();
-      pointer.targetX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-      pointer.targetY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-    };
+    function buildParticles() {
+      const particles = [];
+      const compact = state.width < 700;
+      const spacing = compact ? 10.5 : state.width > 1500 ? 7.8 : 8.6;
+      const columns = Math.ceil(state.width / spacing);
+      const rows = Math.ceil(state.height / spacing);
+      const randomSeed = Math.random() * 100;
 
-    const onPointerLeave = () => {
-      pointer.targetX = 0;
-      pointer.targetY = 0;
-    };
+      for (let row = 0; row <= rows; row += 1) {
+        for (let column = 0; column <= columns; column += 1) {
+          const baseX = column * spacing + (row % 2) * spacing * 0.18;
+          const baseY = row * spacing;
+          const nx = baseX / state.width;
+          const ny = baseY / state.height;
+          const density = densityAt(nx, ny);
+          const sparseNoise = hash(column, row, 91 + randomSeed);
+          const ambientChance = 0.0035 + fbm(nx * 4.8, ny * 4.8, 51) * 0.007;
+          if (sparseNoise > density * 0.82 + ambientChance) continue;
 
-    const draw = (timestamp = 0) => {
-      const time = reducedMotion.matches ? 2.4 : timestamp * 0.00024;
-      pointer.x += (pointer.targetX - pointer.x) * 0.025;
-      pointer.y += (pointer.targetY - pointer.y) * 0.025;
+          const seed = hash(column, row, randomSeed);
+          const accent = accentAt(nx, ny, seed);
+          const edge = density < 0.2;
+          const baseSize = compact ? 1.7 : 2.15;
 
-      context.clearRect(0, 0, width, height);
-
-      const horizonY = height * (0.48 + pointer.y * 0.008);
-      const centerX = width * (0.5 + pointer.x * 0.01);
-      const floorY = height * 1.03;
-
-      const wash = context.createLinearGradient(0, horizonY - 30, 0, floorY);
-      wash.addColorStop(0, "rgba(82, 132, 255, 0.02)");
-      wash.addColorStop(0.45, "rgba(91, 98, 212, 0.045)");
-      wash.addColorStop(1, "rgba(25, 31, 65, 0)");
-      context.fillStyle = wash;
-      context.fillRect(0, horizonY - 20, width, floorY - horizonY + 20);
-
-      for (const point of points) {
-        const depth = point.z;
-        const perspective = 0.1 + Math.pow(depth, 1.75) * 0.94;
-        const worldX = point.x + pointer.x * 0.035 * (1 - depth);
-        const wave =
-          Math.sin(worldX * 4.8 + time * 2.4 + point.z * 2.6) * 0.42 +
-          Math.sin(worldX * 9.5 - time * 1.4 + point.z * 5.2) * 0.18 +
-          Math.cos(point.z * 8.4 + time + point.jitter) * 0.14;
-
-        const x = centerX + worldX * width * 0.58 * perspective;
-        const baseY = horizonY + Math.pow(depth, 2.08) * (floorY - horizonY);
-        const y = baseY - wave * (4 + depth * 28) - pointer.y * depth * 4;
-
-        if (x < -16 || x > width + 16 || y < horizonY - 60 || y > height + 20) {
-          continue;
+          particles.push({
+            baseX,
+            baseY,
+            x: baseX,
+            y: baseY,
+            vx: 0,
+            vy: 0,
+            phase: seed * Math.PI * 2,
+            phaseSecondary: hash(column, row, 33) * Math.PI * 2,
+            density,
+            accent,
+            violet: fbm(nx * 5.6, ny * 5.6, 73),
+            baseAlpha: edge ? 0.14 + seed * 0.18 : 0.2 + density * 0.42 + seed * 0.12,
+            size: baseSize + seed * (compact ? 0.9 : 1.35),
+            drift: 0.45 + hash(column, row, 67) * 1.35,
+          });
         }
-
-        const pulse = 0.78 + Math.sin(time * 3 + point.x * 7 + point.z * 12) * 0.22;
-        const alpha = (0.09 + depth * 0.58) * pulse;
-        const radius = 0.55 + Math.pow(depth, 1.5) * 1.35;
-
-        context.beginPath();
-        context.arc(x, y, radius, 0, TAU);
-        context.fillStyle = `rgba(${Math.round(118 + depth * 48)}, ${Math.round(
-          162 + depth * 36,
-        )}, 255, ${alpha})`;
-        context.fill();
       }
 
-      const horizonGlow = context.createLinearGradient(
-        centerX - width * 0.32,
-        0,
-        centerX + width * 0.32,
-        0,
+      const floaterCount = compact
+        ? 70
+        : Math.min(260, Math.floor((state.width * state.height) / 8200));
+
+      for (let index = 0; index < floaterCount; index += 1) {
+        const baseX = hash(index, 17, 4) * state.width;
+        const baseY = hash(index, 29, 8) * state.height;
+        const seed = hash(index, 41, 12);
+        particles.push({
+          baseX,
+          baseY,
+          x: baseX,
+          y: baseY,
+          vx: 0,
+          vy: 0,
+          phase: seed * Math.PI * 2,
+          phaseSecondary: hash(index, 31, 7) * Math.PI * 2,
+          density: 0.08,
+          accent: seed > 0.91 ? 0.36 : 0,
+          violet: seed,
+          baseAlpha: 0.08 + seed * 0.12,
+          size: 1.2 + seed * 1.25,
+          drift: 0.8 + seed * 1.5,
+        });
+      }
+
+      state.particles = particles;
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      state.width = Math.max(1, rect.width);
+      state.height = Math.max(1, rect.height);
+      canvas.width = Math.round(state.width * state.dpr);
+      canvas.height = Math.round(state.height * state.dpr);
+      context.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      context.imageSmoothingEnabled = false;
+      buildParticles();
+    }
+
+    function triggerPulse(x, y) {
+      state.pulse.x = x;
+      state.pulse.y = y;
+      state.pulse.startedAt = performance.now();
+    }
+
+    function updateParticle(particle, time, delta) {
+      const waveX =
+        Math.sin(time * 0.00034 + particle.phase + particle.baseY * 0.011) * particle.drift;
+      const waveY =
+        Math.cos(time * 0.00029 + particle.phaseSecondary + particle.baseX * 0.009) * particle.drift;
+      let targetX = particle.baseX + waveX;
+      let targetY = particle.baseY + waveY;
+      const fieldWave = Math.sin(
+        particle.baseX * 0.006 + particle.baseY * 0.0035 - time * 0.00042,
       );
-      horizonGlow.addColorStop(0, "rgba(93, 127, 255, 0)");
-      horizonGlow.addColorStop(0.5, "rgba(117, 151, 255, 0.24)");
-      horizonGlow.addColorStop(1, "rgba(93, 127, 255, 0)");
-      context.fillStyle = horizonGlow;
-      context.fillRect(centerX - width * 0.32, horizonY - 0.5, width * 0.64, 1);
 
-      if (!reducedMotion.matches) {
-        animationFrame = requestAnimationFrame(draw);
+      targetX += fieldWave * (0.5 + particle.density * 1.2);
+      targetY += Math.cos(fieldWave * 2.1 + particle.phase) * 0.45;
+      let interactiveAccent = 0;
+
+      if (state.pointer.active) {
+        const dx = particle.x - state.pointer.x;
+        const dy = particle.y - state.pointer.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const radius = state.width < 700 ? 92 : 142;
+
+        if (distanceSquared < radius * radius) {
+          const distance = Math.sqrt(distanceSquared) || 0.001;
+          const force = (1 - distance / radius) ** 2;
+          targetX += (dx / distance) * force * 26;
+          targetY += (dy / distance) * force * 26;
+          interactiveAccent = force;
+        }
       }
-    };
+
+      const pulseAge = time - state.pulse.startedAt;
+      if (pulseAge >= 0 && pulseAge < 1500) {
+        const dx = particle.x - state.pulse.x;
+        const dy = particle.y - state.pulse.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ringRadius = pulseAge * 0.34;
+        const ringDistance = Math.abs(distance - ringRadius);
+        const ringForce = Math.max(0, 1 - ringDistance / 42);
+        const direction = pulseAge < 360 ? -1 : 1;
+        targetX += (dx / distance) * ringForce * 24 * direction;
+        targetY += (dy / distance) * ringForce * 24 * direction;
+        interactiveAccent = Math.max(interactiveAccent, ringForce * 0.9);
+      }
+
+      const spring = reducedMotion ? 0.05 : 0.075;
+      particle.vx += (targetX - particle.x) * spring * delta;
+      particle.vy += (targetY - particle.y) * spring * delta;
+      particle.vx *= Math.pow(0.84, delta);
+      particle.vy *= Math.pow(0.84, delta);
+      particle.x += particle.vx * delta;
+      particle.y += particle.vy * delta;
+
+      return { fieldWave, interactiveAccent };
+    }
+
+    function render(time) {
+      const elapsed = Math.min(34, time - state.lastFrame);
+      const delta = elapsed / 16.667;
+      state.lastFrame = time;
+      state.pointer.x += (state.pointer.targetX - state.pointer.x) * 0.16;
+      state.pointer.y += (state.pointer.targetY - state.pointer.y) * 0.16;
+
+      context.fillStyle = "#0d0912";
+      context.fillRect(0, 0, state.width, state.height);
+
+      const glow = context.createRadialGradient(
+        state.width * 0.57,
+        state.height * 0.44,
+        0,
+        state.width * 0.57,
+        state.height * 0.44,
+        Math.max(state.width, state.height) * 0.62,
+      );
+      glow.addColorStop(0, "rgba(51, 83, 94, 0.14)");
+      glow.addColorStop(0.34, "rgba(76, 53, 101, 0.12)");
+      glow.addColorStop(0.72, "rgba(37, 26, 49, 0.08)");
+      glow.addColorStop(1, "rgba(13, 9, 18, 0)");
+      context.fillStyle = glow;
+      context.fillRect(0, 0, state.width, state.height);
+
+      for (const particle of state.particles) {
+        const { fieldWave, interactiveAccent } = updateParticle(particle, time, delta);
+        const shimmer =
+          0.64 +
+          0.36 *
+            (0.5 +
+              0.5 *
+                Math.sin(time * 0.0011 + particle.phase + particle.baseX * 0.014));
+        const travellingWave =
+          0.5 +
+          0.5 *
+            Math.sin(
+              particle.baseX * 0.013 - particle.baseY * 0.007 - time * 0.00105,
+            );
+        const accentMix = clamp(
+          particle.accent * (0.38 + travellingWave * 0.72) +
+            interactiveAccent * 0.92 +
+            Math.max(0, fieldWave) * particle.accent * 0.16,
+          0,
+          1,
+        );
+        const violetMix = clamp((particle.violet - 0.58) * 0.48, 0, 0.26);
+        const alpha = clamp(
+          particle.baseAlpha * shimmer * (0.78 + particle.density * 0.28) +
+            interactiveAccent * 0.18,
+          0.04,
+          0.88,
+        );
+        const gray = Math.round(116 + particle.density * 67 + shimmer * 16);
+        let red = Math.round(gray * (1 - accentMix) + 79 * accentMix);
+        let green = Math.round(gray * (1 - accentMix) + 179 * accentMix);
+        let blue = Math.round(gray * (1 - accentMix) + 216 * accentMix);
+        red = Math.round(red * (1 - violetMix) + 181 * violetMix);
+        green = Math.round(green * (1 - violetMix) + 154 * violetMix);
+        blue = Math.round(blue * (1 - violetMix) + 207 * violetMix);
+        const size = particle.size * (0.82 + shimmer * 0.2 + interactiveAccent * 0.48);
+
+        context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+        context.fillRect(
+          Math.round(particle.x - size * 0.5),
+          Math.round(particle.y - size * 0.5),
+          Math.max(1, Math.round(size)),
+          Math.max(1, Math.round(size)),
+        );
+      }
+
+      if (!state.disposed && !reducedMotion) {
+        state.animationFrame = window.requestAnimationFrame(render);
+      }
+    }
+
+    function localPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+
+    function handlePointerMove(event) {
+      const point = localPoint(event);
+      state.pointer.targetX = point.x;
+      state.pointer.targetY = point.y;
+      state.pointer.active = true;
+    }
+
+    function handlePointerLeave() {
+      state.pointer.active = false;
+      state.pointer.targetX = -9999;
+      state.pointer.targetY = -9999;
+    }
+
+    function handlePointerDown(event) {
+      if (event.target?.closest?.("button, a")) return;
+      const point = localPoint(event);
+      triggerPulse(point.x, point.y);
+    }
 
     resize();
-    draw(0);
-    if (!reducedMotion.matches) animationFrame = requestAnimationFrame(draw);
+    render(performance.now());
+    const initialPulse = reducedMotion
+      ? 0
+      : window.setTimeout(
+          () => triggerPulse(state.width * 0.58, state.height * 0.42),
+          620,
+        );
 
-    window.addEventListener("resize", resize);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerleave", onPointerLeave);
-
-    const onMotionChange = () => {
-      cancelAnimationFrame(animationFrame);
-      draw(0);
-      if (!reducedMotion.matches) animationFrame = requestAnimationFrame(draw);
-    };
-    reducedMotion.addEventListener?.("change", onMotionChange);
+    window.addEventListener("resize", resize, { passive: true });
+    canvas.addEventListener("pointermove", handlePointerMove, { passive: true });
+    canvas.addEventListener("pointerleave", handlePointerLeave, { passive: true });
+    canvas.addEventListener("pointerdown", handlePointerDown, { passive: true });
 
     return () => {
-      cancelAnimationFrame(animationFrame);
+      state.disposed = true;
+      if (initialPulse) window.clearTimeout(initialPulse);
+      window.cancelAnimationFrame(state.animationFrame);
       window.removeEventListener("resize", resize);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerleave", onPointerLeave);
-      reducedMotion.removeEventListener?.("change", onMotionChange);
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerleave", handlePointerLeave);
+      canvas.removeEventListener("pointerdown", handlePointerDown);
     };
   }, []);
 
