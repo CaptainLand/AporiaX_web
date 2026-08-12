@@ -37,11 +37,12 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const requestCode = useCallback((email) => requestEmailCode(email), []);
+  const requestCode = useCallback((email, inviteCode = "") => requestEmailCode(email, inviteCode), []);
 
-  const verifyCode = useCallback(async (email, code) => {
-    await verifyEmailCode(email, code);
-    return loadMe();
+  const verifyCode = useCallback(async (email, code, inviteCode = "") => {
+    const result = await verifyEmailCode(email, code, inviteCode);
+    await loadMe();
+    return result;
   }, [loadMe]);
 
   const logout = useCallback(async () => {
