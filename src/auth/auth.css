@@ -85,41 +85,61 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: -4px;
-  color: #657b89;
+  color: #6f818d;
   font-size: 9px;
-  line-height: 1.4;
 }
 
-.auth-resend,
+.auth-resend {
+  border: 0;
+  background: transparent;
+  color: #78b9da;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.auth-resend:disabled {
+  color: #566973;
+  cursor: default;
+}
+
 .auth-back {
+  justify-self: center;
   border: 0;
   background: transparent;
   color: #718795;
   font: inherit;
   font-size: 10px;
   cursor: pointer;
-  transition: color 150ms ease, opacity 150ms ease;
 }
 
-.auth-resend {
-  flex: 0 0 auto;
-  padding: 0;
-  color: #789bb0;
+.auth-back:hover { color: #8ed9ff; }
+
+.auth-optional {
+  margin-left: 5px;
+  color: #5d7380;
+  font-size: 9px;
+  font-weight: 400;
 }
 
-.auth-resend:hover:not(:disabled),
-.auth-back:hover {
-  color: #8ed9ff;
+.auth-field-hint {
+  color: #5f7380;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
-.auth-resend:disabled {
-  cursor: default;
-  opacity: 0.62;
+.auth-invite-applied {
+  margin: 0 !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(100, 77, 133, 0.08);
+  color: #758794 !important;
+  font-size: 9px !important;
 }
 
-.auth-back {
-  justify-self: center;
+.auth-invite-applied strong {
+  color: #b2a0dc;
+  letter-spacing: 0.08em;
 }
 
 .nav-user-button {
