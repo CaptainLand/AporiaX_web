@@ -13,6 +13,7 @@ function relativePathname(pathname) {
 
 export default function RootApp() {
   const path = relativePathname(window.location.pathname);
-  if (path.startsWith("/authorize/desktop")) return <DesktopAuthorizePage />;
+  const desktopAuthorize = new URLSearchParams(window.location.search).get("desktop_authorize") === "1";
+  if (desktopAuthorize || path.startsWith("/authorize/desktop")) return <DesktopAuthorizePage />;
   return <App />;
 }
