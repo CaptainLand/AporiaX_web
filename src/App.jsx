@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AccountPage from "./account/AccountPage.jsx";
 import AuthModal from "./auth/AuthModal.jsx";
 import { useAuth } from "./auth/AuthProvider.jsx";
@@ -134,7 +134,6 @@ export default function App() {
 
   const identity = account?.identities?.find((item) => item.type === "email")?.identifier || "";
   const accountName = account?.user?.displayName || identity.split("@")[0] || "Account";
-  const accountInitials = useMemo(() => accountName.slice(0, 2).toUpperCase(), [accountName]);
 
   function navigate(path) {
     const target = withBase(path);
@@ -166,7 +165,7 @@ export default function App() {
         <div className="nav-actions">
           <button className="language-toggle" type="button" onClick={() => setLanguage((current) => (current === "en" ? "zh" : "en"))}>{language === "en" ? "中文" : "EN"}</button>
           {status === "authenticated" ? (
-            <button className="nav-user-button" type="button" onClick={openAccount}><span>{accountInitials}</span><span>{accountName}</span></button>
+            <MetalButton className="nav-user-button" type="button" onClick={openAccount}><span>{accountName}</span></MetalButton>
           ) : (
             <>
               <button className="nav-text-button" type="button" onClick={() => setModal("signin")}>{text.signin}</button>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, getApiUrl } from "../api/client.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import GemLayer from "../welcome/GemLayer.jsx";
+import MetalButton from "../welcome/MetalButton.jsx";
 import "./quota.css";
 
 const OFFICIAL_ICON_URL = `${import.meta.env.BASE_URL || "/"}aporiax-icon.png`;
@@ -167,7 +168,6 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
 
   const email = account?.identities?.find((identity) => identity.type === "email")?.identifier || "";
   const name = account?.user?.displayName || (email ? email.split("@")[0] : "AporiaX");
-  const initials = name.slice(0, 2).toUpperCase();
   const quotaRemaining = data.quota ? percent(data.quota.remainingRatio) : null;
   const quotaWidth = quotaRemaining ?? 0;
   const inviteUrl = useMemo(() => {
@@ -368,7 +368,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
             <h1>{text.greeting}</h1>
             <p>{text.intro}</p>
           </div>
-          <div className="account-user-chip"><span>{initials}</span><div><strong>{name}</strong><small>{email}</small></div></div>
+          <MetalButton as="div" className="account-user-chip"><span>{name}</span></MetalButton>
         </section>
 
         <section className="account-metric-grid">
@@ -497,10 +497,10 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
         <nav>
           {Object.keys(panels).map((key, index) => <button className={active === key ? "active" : ""} key={key} type="button" onClick={() => setActive(key)}><span>{String(index + 1).padStart(2, "0")}</span>{text.nav[index]}</button>)}
         </nav>
-        <div className="account-sidebar-bottom"><button type="button" onClick={onBack}>← {text.back}</button><div className="account-sidebar-user"><span>{initials}</span><div><strong>{name}</strong><small>{email}</small></div></div></div>
+        <div className="account-sidebar-bottom"><button type="button" onClick={onBack}>← {text.back}</button></div>
       </aside>
       <main className="account-main">
-        <header className="account-topbar"><div><span className="cloud-dot" />Aporia Cloud{preview ? <span className="account-preview-chip">{language === "zh" ? "界面预览" : "UI Preview"}</span> : null}</div><div><span className="account-topbar-quota" style={{ "--quota-remaining": `${quotaWidth}%` }}>{quotaRemaining === null ? "—" : `${quotaRemaining}%`}</span><button type="button" onClick={() => setLanguage?.(language === "en" ? "zh" : "en")}>{language === "en" ? "中文" : "EN"}</button></div></header>
+        <header className="account-topbar"><div><span className="cloud-dot" />Aporia Cloud{preview ? <span className="account-preview-chip">{language === "zh" ? "界面预览" : "UI Preview"}</span> : null}</div><div><button type="button" onClick={() => setLanguage?.(language === "en" ? "zh" : "en")}>{language === "en" ? "中文" : "EN"}</button></div></header>
         <div className="account-content">
           {error ? <div className="account-error"><span>{error}</span><button type="button" onClick={refreshData}>{text.retry}</button></div> : null}
           {loading && !data.quota ? <div className="account-loading-inline">{text.loading}</div> : panels[active]}

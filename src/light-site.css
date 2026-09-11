@@ -105,21 +105,43 @@ input:focus-visible {
   text-shadow: none !important;
 }
 
-.nav-user-button {
-  border: 1px solid var(--line-light);
-  background: #fff;
-  color: var(--ink);
+.nav-user-button.ax-metal-btn,
+.account-user-chip.ax-metal-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border: 0 !important;
+  backdrop-filter: none;
 }
 
-.nav-user-button > span:first-child {
-  background: linear-gradient(145deg, #49abc7, #2c85ad);
-  color: #fff;
+.account-user-chip.ax-metal-btn {
+  cursor: default;
 }
 
-.nav-user-button:hover {
-  border-color: rgba(44, 133, 173, 0.35);
-  color: var(--lake);
-  box-shadow: 0 8px 20px rgba(44, 133, 173, 0.08);
+.nav-user-button.ax-metal-btn {
+  cursor: pointer;
+}
+
+.nav-user-button.ax-metal-btn > span:not(.ax-metal-btn__layer),
+.account-user-chip.ax-metal-btn > span:not(.ax-metal-btn__layer) {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none !important;
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.nav-user-button.ax-metal-btn:hover {
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 12px 26px #176de238, inset 0 1px 0 #ffffff55;
 }
 
 .hero,
@@ -321,23 +343,39 @@ input:focus-visible {
 
 .ax-metal-btn,
 .ax-metal-btn.button,
-.ax-metal-btn.nav-account-button {
+.ax-metal-btn.nav-account-button,
+.ax-metal-btn.nav-user-button,
+.ax-metal-btn.account-user-chip {
   position: relative;
   isolation: isolate;
   overflow: hidden !important;
   border-radius: 999px !important;
   clip-path: inset(0 round 999px);
   transform: translateZ(0);
+  min-height: 48px;
+  padding: 0 22px 0 24px;
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px #0b2744cc, 0 0 10px #0b274499;
+  background: linear-gradient(160deg, #4d93c8 0%, #2a6aa0 48%, #1b4f78 100%) !important;
+  box-shadow: 0 12px 28px #176de238, inset 0 1px 0 #ffffff55;
 }
 
 .ax-metal-btn__layer {
   position: absolute;
   inset: 0;
   z-index: 0;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
   border-radius: inherit;
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
+  background: transparent !important;
+  box-shadow: none !important;
   clip-path: inset(0 round 999px);
 }
 
@@ -350,11 +388,17 @@ input:focus-visible {
   max-width: 100%;
   max-height: 100%;
   border-radius: inherit;
+  contain: strict;
   clip-path: inset(0 round 999px);
 }
 
 .ax-metal-btn[data-metal="animated"] .ax-metal-btn__layer {
-  opacity: 0.55;
+  opacity: 0.42;
+  mix-blend-mode: soft-light;
+}
+
+.ax-metal-btn[data-metal="animated"] {
+  background: linear-gradient(160deg, #4d93c8 0%, #2a6aa0 48%, #1b4f78 100%) !important;
 }
 
 .ax-metal-btn > :not(.ax-metal-btn__layer) {
@@ -370,7 +414,7 @@ input:focus-visible {
   border: 0;
   color: #fff !important;
   background: linear-gradient(160deg, #4d93c8 0%, #2a6aa0 48%, #1b4f78 100%) !important;
-  box-shadow: 0 12px 28px rgba(27, 79, 120, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  box-shadow: 0 12px 28px #176de238, inset 0 1px 0 #ffffff55;
 }
 
 .button--primary:hover {
@@ -661,21 +705,18 @@ input:focus-visible {
   color: #5d7383;
 }
 
-.account-sidebar-user,
-.account-user-chip {
+.account-sidebar-user {
   border: 1px solid var(--line-light);
   background: #fff;
 }
 
-.account-sidebar-user > span,
-.account-user-chip > span {
+.account-sidebar-user > span {
   background: linear-gradient(145deg, #49abc7, #2c85ad);
   color: #fff;
   box-shadow: none;
 }
 
-.account-sidebar-user strong,
-.account-user-chip strong {
+.account-sidebar-user strong {
   color: var(--ink);
 }
 
