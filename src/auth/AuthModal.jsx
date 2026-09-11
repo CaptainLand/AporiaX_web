@@ -110,7 +110,7 @@ function inviteFromLocation() {
 }
 
 export default function AuthModal({ mode, onClose, language = "en", onAuthenticated }) {
-  const { requestCode, verifyCode } = useAuth();
+  const { requestCode, verifyCode, enterPreview, isPreviewLogin } = useAuth();
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -185,6 +185,12 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
     const normalizedEmail = email.trim();
     const normalizedInvite = mode === "signup" ? inviteCode.trim().toUpperCase() : "";
     if (!normalizedEmail) return;
+    if (isPreviewLogin(normalizedEmail)) {
+      enterPreview();
+      onClose();
+      onAuthenticated?.();
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -259,7 +265,7 @@ export default function AuthModal({ mode, onClose, language = "en", onAuthentica
           <form className="auth-form" onSubmit={submitEmail}>
             <label>
               <span>{text.email}</span>
-              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="you@example.com" autoFocus />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="text" inputMode="email" autoComplete="email" placeholder="you@example.com" autoFocus />
             </label>
             {mode === "signup" ? (
               <label>

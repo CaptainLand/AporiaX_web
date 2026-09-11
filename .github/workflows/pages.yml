@@ -34,6 +34,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /AporiaX_web/
+          VITE_APORIA_API_URL: https://captainlan.tail0f652a.ts.net
 
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html

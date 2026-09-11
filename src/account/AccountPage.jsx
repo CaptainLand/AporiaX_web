@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, getApiUrl } from "../api/client.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import GemLayer from "../welcome/GemLayer.jsx";
 import "./quota.css";
 
-const OFFICIAL_ICON_URL = "https://raw.githubusercontent.com/CaptainLand/AporiaX/main/public/aporiax-icon.png";
+const OFFICIAL_ICON_URL = `${import.meta.env.BASE_URL || "/"}aporiax-icon.png`;
 
 const copy = {
   en: {
@@ -61,6 +62,8 @@ const copy = {
     inviteTwo: "2nd verified invite",
     inviteThree: "3rd verified invite",
     noUsage: "No model usage yet.",
+    partialLoad: "Some account data is temporarily unavailable. Loaded sections remain usable.",
+    networkUnavailable: "Aporia Cloud is temporarily unreachable. Check the local Cloud service and try again.",
   },
   zh: {
     back: "返回 AporiaX",
@@ -117,6 +120,8 @@ const copy = {
     inviteTwo: "第 2 个有效邀请",
     inviteThree: "第 3 个有效邀请",
     noUsage: "还没有模型用量。",
+    partialLoad: "部分账号数据暂时无法加载，已成功加载的区域仍可正常使用。",
+    networkUnavailable: "暂时无法连接 Aporia Cloud，请检查本地 Cloud 服务后重试。",
   },
 };
 
@@ -151,7 +156,7 @@ function percent(value) {
 
 export default function AccountPage({ language = "en", setLanguage, onBack, onSignIn }) {
   const text = copy[language] || copy.en;
-  const { status, account, logout, reloadMe, updateProfile } = useAuth();
+  const { status, account, logout, reloadMe, updateProfile, preview, previewData } = useAuth();
   const [active, setActive] = useState("overview");
   const [data, setData] = useState({ quota: null, invites: null, devices: [], sessions: [], usage: null, models: [] });
   const [loading, setLoading] = useState(false);
@@ -163,7 +168,8 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
   const email = account?.identities?.find((identity) => identity.type === "email")?.identifier || "";
   const name = account?.user?.displayName || (email ? email.split("@")[0] : "AporiaX");
   const initials = name.slice(0, 2).toUpperCase();
-  const quotaRemaining = percent(data.quota?.remainingRatio);
+  const quotaRemaining = data.quota ? percent(data.quota.remainingRatio) : null;
+  const quotaWidth = quotaRemaining ?? 0;
   const inviteUrl = useMemo(() => {
     if (!data.invites?.inviteCode || typeof window === "undefined") return "";
     const url = new URL("/", window.location.origin);
@@ -177,24 +183,45 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
 
   const refreshData = useCallback(async () => {
     if (status !== "authenticated") return;
+    if (preview && previewData) {
+      setData(previewData);
+      setLoading(false);
+      setError("");
+      return;
+    }
+    const loaders = {
+      quota: () => api("/quota/weekly"),
+      invites: () => api("/invites"),
+      devices: () => api("/devices"),
+      sessions: () => api("/sessions"),
+      usage: () => api("/usage/summary?days=7"),
+      models: () => api("/models"),
+    };
     setLoading(true);
     setError("");
     try {
-      const [quota, invites, devices, sessions, usage, models] = await Promise.all([
-        api("/quota/weekly"),
-        api("/invites"),
-        api("/devices"),
-        api("/sessions"),
-        api("/usage/summary?days=7"),
-        api("/models"),
-      ]);
-      setData({ quota, invites, devices, sessions, usage, models });
+      const entries = Object.entries(loaders);
+      const settled = await Promise.allSettled(entries.map(([, load]) => load()));
+      const loaded = {};
+      const failures = [];
+      settled.forEach((result, index) => {
+        const [key] = entries[index];
+        if (result.status === "fulfilled") loaded[key] = result.value;
+        else failures.push(result.reason);
+      });
+      if (Object.keys(loaded).length) {
+        setData((current) => ({ ...current, ...loaded }));
+      }
+      if (failures.length) {
+        const networkOnly = failures.every((failure) => failure?.message === "NETWORK_UNAVAILABLE");
+        setError(networkOnly ? text.networkUnavailable : `${text.partialLoad} (${failures.length}/${entries.length})`);
+      }
     } catch (err) {
-      setError(err?.message || "ACCOUNT_LOAD_FAILED");
+      setError(err?.message === "NETWORK_UNAVAILABLE" ? text.networkUnavailable : (err?.message || "ACCOUNT_LOAD_FAILED"));
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [status, preview, previewData, text.networkUnavailable, text.partialLoad]);
 
   useEffect(() => {
     refreshData();
@@ -226,16 +253,35 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
 
   async function revokeDevice(id) {
     if (!window.confirm("Remove this device from Aporia Account?")) return;
+    if (preview) {
+      setData((current) => ({ ...current, devices: current.devices.filter((device) => device.id !== id) }));
+      return;
+    }
     await api(`/devices/${id}`, { method: "DELETE" });
     await refreshData();
   }
 
   async function toggleRemote(device) {
+    if (preview) {
+      setData((current) => ({
+        ...current,
+        devices: current.devices.map((item) => item.id === device.id ? { ...item, remoteEnabled: !item.remoteEnabled } : item),
+      }));
+      return;
+    }
     await api(`/devices/${device.id}`, { method: "PATCH", body: { remoteEnabled: !device.remoteEnabled } });
     await refreshData();
   }
 
   async function revokeSession(id) {
+    if (preview) {
+      if (data.sessions.find((session) => session.id === id)?.current) {
+        await logout();
+        return;
+      }
+      setData((current) => ({ ...current, sessions: current.sessions.filter((session) => session.id !== id) }));
+      return;
+    }
     await api(`/sessions/${id}`, { method: "DELETE" });
     if (data.sessions.find((session) => session.id === id)?.current) {
       await logout();
@@ -250,7 +296,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
     setSaving(true);
     try {
       await updateProfile(displayName.trim());
-      await reloadMe();
+      if (!preview) await reloadMe();
     } finally {
       setSaving(false);
     }
@@ -277,10 +323,10 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
   const quotaCard = (
     <article className="account-panel quota-card">
       <div className="quota-card-head">
-        <div><span>{text.weeklyQuota}</span><strong>{quotaRemaining}% {text.remaining}</strong></div>
+        <div><span>{text.weeklyQuota}</span><strong>{quotaRemaining === null ? "—" : `${quotaRemaining}% ${text.remaining}`}</strong></div>
         <span className="quota-state">{data.quota?.refilled ? text.refilled : text.weekly}</span>
       </div>
-      <div className="quota-bar-shell"><div className="quota-bar-fill" style={{ width: `${quotaRemaining}%` }} /></div>
+      <div className="quota-bar-shell"><div className="quota-bar-fill" style={{ width: `${quotaWidth}%` }}><GemLayer /></div></div>
       <div className="quota-meta-row"><span>{text.quotaLead}</span><strong>{text.reset}: {formatReset(data.quota?.cycleEnd)}</strong></div>
       <p className="quota-reset-note">{language === "zh" ? "邀请奖励只会补回已经消耗的额度，最高回到 100%，不会扩大额度条上限。" : "Invite rewards only refill consumed quota up to 100%; they never expand the bar beyond its weekly maximum."}</p>
     </article>
@@ -293,6 +339,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
         <span className="quota-state">{data.invites?.rewardsExhausted ? text.complete : data.invites?.nextRewardPercent ? `+${data.invites.nextRewardPercent}%` : "—"}</span>
       </div>
       <div className="invite-code-box">
+        <GemLayer />
         <div className="invite-code-row">
           <code>{data.invites?.inviteCode || "—"}</code>
           <button className="invite-copy" type="button" onClick={copyInviteLink} disabled={!inviteUrl}>{copied ? text.copied : text.copyInvite}</button>
@@ -327,8 +374,8 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
         <section className="account-metric-grid">
           <article className="account-metric account-metric--credit">
             <span>{text.weeklyQuota}</span>
-            <strong>{quotaRemaining}%</strong>
-            <div className="quota-bar-shell quota-bar-shell--compact"><div className="quota-bar-fill" style={{ width: `${quotaRemaining}%` }} /></div>
+            <strong>{quotaRemaining === null ? "—" : `${quotaRemaining}%`}</strong>
+            <div className="quota-bar-shell quota-bar-shell--compact"><div className="quota-bar-fill" style={{ width: `${quotaWidth}%` }}><GemLayer /></div></div>
             <p>{text.reset}: {formatReset(data.quota?.cycleEnd)}</p>
           </article>
           <article className="account-metric"><span>{text.plan}</span><strong className="account-plan">{text.free}</strong><p>BYOK + Aporia Cloud Preview</p></article>
@@ -352,6 +399,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
           <article className="account-panel">
             <div className="account-panel-title"><div><span>{text.invites}</span><small>{data.invites?.successfulInvites || 0}</small></div><button onClick={() => setActive("quota")}>↗</button></div>
             <div className="invite-code-box">
+              <GemLayer />
               <div className="invite-code-row"><code>{data.invites?.inviteCode || "—"}</code><button className="invite-copy" type="button" onClick={copyInviteLink} disabled={!inviteUrl}>{copied ? text.copied : text.copyInvite}</button></div>
               <p className="invite-rule-note">{data.invites?.rewardsExhausted ? text.rewardsComplete : `${text.nextReward}: +${data.invites?.nextRewardPercent || 0}%`}</p>
             </div>
@@ -452,7 +500,7 @@ export default function AccountPage({ language = "en", setLanguage, onBack, onSi
         <div className="account-sidebar-bottom"><button type="button" onClick={onBack}>← {text.back}</button><div className="account-sidebar-user"><span>{initials}</span><div><strong>{name}</strong><small>{email}</small></div></div></div>
       </aside>
       <main className="account-main">
-        <header className="account-topbar"><div><span className="cloud-dot" />Aporia Cloud</div><div><span className="account-topbar-quota" style={{ "--quota-remaining": `${quotaRemaining}%` }}>{quotaRemaining}%</span><button type="button" onClick={() => setLanguage?.(language === "en" ? "zh" : "en")}>{language === "en" ? "中文" : "EN"}</button></div></header>
+        <header className="account-topbar"><div><span className="cloud-dot" />Aporia Cloud{preview ? <span className="account-preview-chip">{language === "zh" ? "界面预览" : "UI Preview"}</span> : null}</div><div><span className="account-topbar-quota" style={{ "--quota-remaining": `${quotaWidth}%` }}>{quotaRemaining === null ? "—" : `${quotaRemaining}%`}</span><button type="button" onClick={() => setLanguage?.(language === "en" ? "zh" : "en")}>{language === "en" ? "中文" : "EN"}</button></div></header>
         <div className="account-content">
           {error ? <div className="account-error"><span>{error}</span><button type="button" onClick={refreshData}>{text.retry}</button></div> : null}
           {loading && !data.quota ? <div className="account-loading-inline">{text.loading}</div> : panels[active]}

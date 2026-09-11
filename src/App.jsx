@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import ParticleSea from "./ParticleSea.jsx";
 import AccountPage from "./account/AccountPage.jsx";
 import AuthModal from "./auth/AuthModal.jsx";
 import { useAuth } from "./auth/AuthProvider.jsx";
+import HeroStage from "./welcome/HeroStage.jsx";
+import MetalButton from "./welcome/MetalButton.jsx";
 
 const APORIAX_REPO = "https://github.com/CaptainLand/AporiaX";
 const DOWNLOAD_URL = "https://github.com/CaptainLand/AporiaX/releases/latest";
-const APP_ICON_URL = "https://raw.githubusercontent.com/CaptainLand/AporiaX/main/public/aporiax-icon.png";
 const BASE_URL = import.meta.env.BASE_URL || "/";
 const BASE_PATH = BASE_URL === "/" ? "" : BASE_URL.replace(/\/$/, "");
+const APP_ICON_URL = `${BASE_URL}aporiax-icon.png`;
+const APP_LOGO_URL = `${BASE_URL}aporiax-logo-clean.png`;
 
 function routeFromPathname(pathname) {
   const relativePath = BASE_PATH && pathname.startsWith(BASE_PATH)
@@ -27,9 +29,9 @@ const copy = {
     nav: ["Product", "Principles", "Download"],
     signin: "Sign in",
     signup: "Create account",
-    titleA: "Build. Verify. Ship.",
-    titleB: "AporiaX.",
-    heroShort: "Local-first · Multi-Agent · Verifiable",
+    titleA: "AporiaX",
+    heroAporia: "Every problem begins with an aporia.",
+    heroTags: ["Local-first", "Multi-Agent", "Verifiable"],
     download: "Download for Windows",
     github: "View on GitHub",
     pillarsTitle: "Not just an answer. A visible path.",
@@ -67,9 +69,9 @@ const copy = {
     nav: ["产品", "理念", "下载"],
     signin: "登录",
     signup: "创建账号",
-    titleA: "Build. Verify. Ship.",
-    titleB: "AporiaX.",
-    heroShort: "本地执行 · 多 Agent · 可验证",
+    titleA: "AporiaX",
+    heroAporia: "每个答案，都始于一个尚未解开的疑问。",
+    heroTags: ["本地执行", "多 Agent", "可验证"],
     download: "下载 Windows 版",
     github: "查看 GitHub",
     pillarsTitle: "不只给答案，也留下路径。",
@@ -168,29 +170,23 @@ export default function App() {
           ) : (
             <>
               <button className="nav-text-button" type="button" onClick={() => setModal("signin")}>{text.signin}</button>
-              <button className="nav-account-button" type="button" onClick={() => setModal("signup")}>{text.signup}</button>
+              <MetalButton className="nav-account-button" type="button" onClick={() => setModal("signup")}><span>{text.signup}</span></MetalButton>
             </>
           )}
         </div>
       </header>
 
       <main>
-        <section className="hero" id="top">
-          <ParticleSea />
-          <div className="hero-content page-width hero-content--split">
-            <div className="hero-statement">
-              <h1><span>{text.titleA}</span><span className="hero-title-gradient">{text.titleB}</span></h1>
-            </div>
-            <div className="hero-cta">
-              <p className="hero-short">{text.heroShort}</p>
-              <div className="hero-actions">
-                <a className="button button--primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">{text.download}<ArrowIcon /></a>
-                <a className="button button--quiet" href={APORIAX_REPO} target="_blank" rel="noreferrer">{text.github}<ArrowIcon /></a>
-              </div>
-            </div>
-          </div>
-          <div className="hero-fade" aria-hidden="true" />
-        </section>
+        <HeroStage
+          logoUrl={APP_LOGO_URL}
+          title={text.titleA}
+          subtitle={text.heroAporia}
+          tags={text.heroTags}
+          downloadLabel={text.download}
+          githubLabel={text.github}
+          downloadUrl={DOWNLOAD_URL}
+          githubUrl={APORIAX_REPO}
+        />
 
         <section className="principles section page-width" id="principles">
           <div className="section-heading"><p className="section-kicker">Route · Evidence · Anchor</p><h2>{text.pillarsTitle}</h2><p>{text.pillarsLead}</p></div>
@@ -205,7 +201,16 @@ export default function App() {
             <div className="runtime-card" aria-label="AporiaX task route example">
               <div className="runtime-card__topbar"><div><span className="runtime-live-dot" /><strong>Agent Process</strong></div><span>00:42</span></div>
               <div className="runtime-route">
-                {text.routeSteps.map(([title, detail], index) => <div className={`runtime-step ${index < 3 ? "runtime-step--complete" : ""}`} key={title}><span className="runtime-step__index">{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{detail}</p></div><span className="runtime-step__state">{index < 3 ? "done" : index === 3 ? "active" : "next"}</span></div>)}
+                {text.routeSteps.map(([title, detail], index) => {
+                  const state = index < 3 ? "done" : index === 3 ? "active" : "next";
+                  return (
+                    <div className={`runtime-step ${index < 3 ? "runtime-step--complete" : ""} runtime-step--${state}`} key={title}>
+                      <span className="runtime-step__index">{String(index + 1).padStart(2, "0")}</span>
+                      <div><strong>{title}</strong><p>{detail}</p></div>
+                      <span className={`runtime-step__state runtime-step__state--${state}`}>{state}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="runtime-evidence"><span>Evidence</span><code>18 tests passed · 4 files reviewed · Anchor ready</code></div>
             </div>
@@ -226,7 +231,7 @@ export default function App() {
           <div className="download-card">
             <div className="download-orbit download-orbit--one" aria-hidden="true" /><div className="download-orbit download-orbit--two" aria-hidden="true" />
             <div className="download-copy"><p className="section-kicker">{text.ctaEyebrow}</p><h2>{text.ctaTitle}</h2><p>{text.ctaLead}</p></div>
-            <div className="download-actions"><a className="button button--primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">{text.download}<ArrowIcon /></a><a className="button button--quiet" href={APORIAX_REPO} target="_blank" rel="noreferrer">GitHub<ArrowIcon /></a></div>
+            <div className="download-actions"><MetalButton className="button button--primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer"><span>{text.download}</span><span aria-hidden="true">↗</span></MetalButton><a className="button button--quiet" href={APORIAX_REPO} target="_blank" rel="noreferrer">GitHub<ArrowIcon /></a></div>
           </div>
         </section>
       </main>

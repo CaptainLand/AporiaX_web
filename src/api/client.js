@@ -1,7 +1,14 @@
-const API_URL = (import.meta.env.VITE_APORIA_API_URL || "http://localhost:4100").replace(/\/$/, "");
+const DEFAULT_API_URL = "https://captainlan.tail0f652a.ts.net";
+const API_URL = (import.meta.env.VITE_APORIA_API_URL || DEFAULT_API_URL).replace(
+  /\/$/,
+  "",
+);
 
 let accessToken = null;
 let refreshPromise = null;
+const RETRYABLE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const NETWORK_RETRY_DELAY_MS = 280;
+const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export class ApiError extends Error {
   constructor(message, status, payload) {
@@ -31,7 +38,7 @@ async function parseResponse(response) {
   }
 }
 
-async function rawRequest(path, options = {}) {
+async function rawRequest(path, options = {}, attempt = 0) {
   const headers = new Headers(options.headers || {});
   if (options.body !== undefined && options.body !== null && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -40,12 +47,25 @@ async function rawRequest(path, options = {}) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: "include",
-    headers,
-    body: options.body && typeof options.body !== "string" ? JSON.stringify(options.body) : options.body,
-  });
+  const method = String(options.method || "GET").toUpperCase();
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers,
+      body: options.body && typeof options.body !== "string" ? JSON.stringify(options.body) : options.body,
+    });
+  } catch (error) {
+    if (attempt === 0 && RETRYABLE_METHODS.has(method)) {
+      await sleep(NETWORK_RETRY_DELAY_MS);
+      return rawRequest(path, options, attempt + 1);
+    }
+    throw new ApiError("NETWORK_UNAVAILABLE", 0, {
+      path,
+      cause: error instanceof Error ? error.message : String(error),
+    });
+  }
   const payload = await parseResponse(response);
   return { response, payload };
 }
