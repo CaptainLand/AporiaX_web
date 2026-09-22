@@ -2,6 +2,12 @@
 
 Product website and Aporia Account Center for [AporiaX](https://github.com/CaptainLand/AporiaX), the local-first desktop coding agent.
 
+## User guide
+
+The public Chinese user guide is served at [guide/](https://captainland.github.io/AporiaX_web/guide/) without signing in. It is a standalone static page, so reading it never initializes account authentication or calls a model API. Home navigation and the footer link to it.
+
+The source is maintained in the desktop repository at `docs/USER_GUIDE.zh-CN.md`. From that repository, run `node scripts/build-user-guide.mjs <path-to-this-repo>/public/guide`, review the generated changes, and commit `public/guide/` here. Do not edit generated HTML by hand. The existing Pages workflow publishes this directory with Vite; no additional service is required.
+
 ## Local development
 
 Start AporiaX Cloud first on its `agent/cloud-v0.1-foundation` branch. Docker is optional; the no-Docker Windows path only requires PostgreSQL:

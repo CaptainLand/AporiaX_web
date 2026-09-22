@@ -161,6 +161,7 @@ export default function App() {
         <a className="brand" href="#top" aria-label="AporiaX home"><BrandLogo /><span>AporiaX</span></a>
         <nav className="nav-links" aria-label="Primary navigation">
           <a href="#product">{text.nav[0]}</a><a href="#principles">{text.nav[1]}</a><a href="#download">{text.nav[2]}</a>
+          <a href={`${BASE_URL}guide/`}>{language === "zh" ? "使用教程" : "Guide (中文)"}</a>
         </nav>
         <div className="nav-actions">
           <button className="language-toggle" type="button" onClick={() => setLanguage((current) => (current === "en" ? "zh" : "en"))}>{language === "en" ? "中文" : "EN"}</button>
@@ -237,7 +238,7 @@ export default function App() {
 
       <footer className="footer page-width">
         <a className="brand brand--footer" href="#top"><BrandLogo /><span>AporiaX</span></a>
-        <p>{text.footer}</p>
+        <p>{text.footer} · <a href={`${BASE_URL}guide/`}>{language === "zh" ? "使用教程" : "Guide (中文)"}</a></p>
         <div><a href={APORIAX_REPO} target="_blank" rel="noreferrer">GitHub</a><a href={`${APORIAX_REPO}#readme`} target="_blank" rel="noreferrer">Docs</a><a href={DOWNLOAD_URL} target="_blank" rel="noreferrer">Download</a></div>
       </footer>
 
